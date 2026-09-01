@@ -14,7 +14,6 @@ This project uses the following tech stack:
 - Three js (for 3d models)
 
 All relevant files live in the 'src' directory.
-
 Use bun for the package manager.
 
 ## Setup
@@ -24,9 +23,7 @@ This project is set up already and running on a cloud environment, as well as a 
 ## Environment Variables
 
 The project is set up with project specific CONVEX_DEPLOYMENT and VITE_CONVEX_URL environment variables on the client side.
-
 The convex server has a separate set of environment variables that are accessible by the convex backend.
-
 Currently, these variables include auth-specific keys: JWKS, JWT_PRIVATE_KEY, and SITE_URL.
 
 
@@ -37,9 +34,7 @@ You must follow these conventions when using authentication.
 ## Auth is already set up.
 
 All convex authentication functions are already set up. The auth currently uses email OTP and anonymous users, but can support more.
-
 The email OTP configuration is defined in `src/convex/auth/emailOtp.ts`. DO NOT MODIFY THIS FILE.
-
 Also, DO NOT MODIFY THESE AUTH FILES: `src/convex/auth.config.ts` and `src/convex/auth.ts`.
 
 ## Using Convex Auth on the backend
@@ -72,9 +67,7 @@ to `/auth`.
 ## Authorization
 
 You can perform authorization checks on the frontend and backend.
-
 On the frontend, you can use the `useAuth` hook to get the current user's data and authentication state.
-
 You should also be protecting queries, mutations, and actions at the base level, checking for authorization securely.
 
 ## Adding a redirect after auth
@@ -95,15 +88,12 @@ that signing in reaches it.
 # Frontend Conventions
 
 You will be using the Vite frontend with React 19, Tailwind v4, and Shadcn UI.
-
 Generally, pages should be in the `src/pages` folder, and components should be in the `src/components` folder.
-
 Shadcn primitives are located in the `src/components/ui` folder and should be used by default.
 
 ## Page routing
 
 Your page component should go under the `src/pages` folder.
-
 When adding a page, update the react router configuration in `src/main.tsx` to include the new route you just added.
 
 ## Shad CN conventions
@@ -123,15 +113,12 @@ You must always create good-looking designer-level styles to your application.
 - Make it well animated and fit a certain "theme", ie neo brutalist, retro, neumorphism, glass morphism, etc
 
 Use known images and emojis from online.
-
 If the user is logged in already, show the get started button to say "Dashboard" or "Profile" instead to take them there.
 
 ## Responsiveness and formatting
 
 Make sure pages are wrapped in a container to prevent the width stretching out on wide screens. Always make sure they are centered aligned and not off-center.
-
 Always make sure that your designs are mobile responsive. Verify the formatting to ensure it has correct max and min widths as well as mobile responsiveness.
-
 - Always create sidebars for protected dashboard pages and navigate between pages
 - Always create navbars for landing pages
 - On these bars, the created logo should be clickable and redirect to the index page
@@ -139,7 +126,6 @@ Always make sure that your designs are mobile responsive. Verify the formatting 
 ## Animating with Framer Motion
 
 You must add animations to components using Framer Motion. It is already installed and configured in the project.
-
 To use it, import the `motion` component from `framer-motion` and use it to wrap the component you want to animate.
 
 
@@ -148,7 +134,6 @@ To use it, import the `motion` component from `framer-motion` and use it to wrap
 - Slide in and Slide Out animations
 - Rendering animations
 - Button clicks and UI elements
-
 Animate for all components, including on landing page and app pages.
 
 ## Three JS Graphics
@@ -159,29 +144,21 @@ Your app comes with three js by default. You can use it to create 3D graphics fo
 ## Colors
 
 You can override colors in: `src/index.css`
-
 This uses the oklch color format for tailwind v4.
-
 Always use these color variable names.
-
 Make sure all ui components are set up to be mobile responsive and compatible with both light and dark mode.
-
 Set theme using `dark` or `light` variables at the parent className.
 
 ## Styling and Theming
 
 When changing the theme, always change the underlying theme of the shad cn components app-wide under `src/components/ui` and the colors in the index.css file.
-
 Avoid hardcoding in colors unless necessary for a use case, and properly implement themes through the underlying shad cn ui components.
-
 When styling, ensure buttons and clickable items have pointer-click on them (don't by default).
-
 Always follow a set theme style and ensure it is tuned to the user's liking.
 
 ## Toasts
 
 You should always use toasts to display results to the user, such as confirmations, results, errors, etc.
-
 Use the shad cn Sonner component as the toaster. For example:
 
 ```
@@ -213,7 +190,6 @@ Remember to import { toast } from "sonner". Usage: `toast("Event has been create
 ## Dialogs
 
 Always ensure your larger dialogs have a scroll in its content to ensure that its content fits the screen size. Make sure that the content is not cut off from the screen.
-
 Ideally, instead of using a new page, use a Dialog instead. 
 
 # Using the Convex backend
@@ -223,9 +199,7 @@ You will be implementing the convex backend. Follow your knowledge of convex and
 ## The Convex Schema
 
 You must correctly follow the convex schema implementation.
-
 The schema is defined in `src/convex/schema.ts`.
-
 Do not include the `_id` and `_creationTime` fields in your queries (it is included by default for each table).
 Do not index `_creationTime` as it is indexed for you. Never have duplicate indexes.
 
@@ -233,9 +207,7 @@ Do not index `_creationTime` as it is indexed for you. Never have duplicate inde
 ## Convex Actions: Using CRUD operations
 
 When running anything that involves external connections, you must use a convex action with "use node" at the top of the file.
-
 You cannot have queries or mutations in the same file as a "use node" action file. Thus, you must use pre-built queries and mutations in other files.
-
 You can also use the pre-installed internal crud functions for the database:
 
 ```ts
