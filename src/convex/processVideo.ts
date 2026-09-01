@@ -2,6 +2,11 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 
+// API response types
+type GroqSegment = { text: string; start: number; end: number };
+type DeepgramWord = { word: string; start: number; end: number };
+type ClipResult = { startTime: number; endTime: number; score: number; label: string; reason: string };
+
 // ── Transcription via configured provider ───────────────────────────────────
 
 async function transcribeWithGroq(audioBase64: string, apiKey: string): Promise<Array<{ text: string; start: number; end: number }>> {
@@ -25,7 +30,7 @@ async function transcribeWithGroq(audioBase64: string, apiKey: string): Promise<
   }
 
   const data = await res.json();
-  return (data.segments || []).map((s: any) => ({
+  return (data.segments || []).map((s: GroqSegment) => ({
     text: s.text,
     start: s.start,
     end: s.end,
@@ -54,7 +59,7 @@ async function transcribeWithDeepgram(audioBase64: string, apiKey: string): Prom
 
   const data = await res.json();
   const words = data.results?.channels?.[0]?.alternatives?.[0]?.words || [];
-  return words.map((w: any) => ({
+  return words.map((w: DeepgramWord) => ({
     text: w.word,
     start: w.start,
     end: w.end,
@@ -82,7 +87,7 @@ async function transcribeWithOpenAI(audioBase64: string, apiKey: string): Promis
   }
 
   const data = await res.json();
-  return (data.segments || []).map((s: any) => ({
+  return (data.segments || []).map((s: GroqSegment) => ({
     text: s.text,
     start: s.start,
     end: s.end,
@@ -128,7 +133,7 @@ Transcript with timestamps:
 ${transcript}`;
 }
 
-async function scoreWithClaude(transcript: string, apiKey: string): Promise<any[]> {
+async function scoreWithClaude(transcript: string, apiKey: string): Promise<ClipResult[]> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -154,7 +159,7 @@ async function scoreWithClaude(transcript: string, apiKey: string): Promise<any[
   return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
 }
 
-async function scoreWithOpenAI(transcript: string, apiKey: string): Promise<any[]> {
+async function scoreWithOpenAI(transcript: string, apiKey: string): Promise<ClipResult[]> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -179,7 +184,7 @@ async function scoreWithOpenAI(transcript: string, apiKey: string): Promise<any[
   return Array.isArray(parsed) ? parsed : parsed.clips || [];
 }
 
-async function scoreWithGemini(transcript: string, apiKey: string): Promise<any[]> {
+async function scoreWithGemini(transcript: string, apiKey: string): Promise<ClipResult[]> {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
     {
@@ -206,7 +211,7 @@ async function scoreTranscript(
   transcript: string,
   provider: string,
   apiKey: string
-): Promise<any[]> {
+): Promise<ClipResult[]> {
   switch (provider) {
     case "claude":
       return scoreWithClaude(transcript, apiKey);
@@ -256,7 +261,7 @@ function generateMockClips(transcript: Array<{ text: string; start: number; end:
   while (selectedIndices.size < clipCount && selectedIndices.size < transcript.length) {
     selectedIndices.add((seed + selectedIndices.size * 7) % transcript.length);
   }
-  const clips: any[] = [];
+  const clips: ClipResult[] = [];
   let index = 0;
   for (const idx of Array.from(selectedIndices).sort((a, b) => a - b)) {
     const segment = transcript[idx];
@@ -267,7 +272,7 @@ function generateMockClips(transcript: Array<{ text: string; start: number; end:
     clips.push({ startTime, endTime: Math.max(startTime + clipDuration, segment.start + 30), score: Math.round(score * 100) / 100, label: labelInfo.label, reason: labelInfo.reason });
     index++;
   }
-  return clips.sort((a: any, b: any) => b.score - a.score);
+  return clips.sort((a: ClipResult, b: ClipResult) => b.score - a.score);
 }
 
 function extractVideoId(url: string): string {
@@ -297,7 +302,7 @@ export const processVideo = action({
       transcriptionApiKey?: string;
       llmProvider?: string;
       llmApiKey?: string;
-    } = await ctx.runQuery(api.apiSettings.get) as any;
+    } = await ctx.runQuery(api.apiSettings.get) as Record<string, unknown>;
     const hasRealAPIs: boolean = !!(settings?.transcriptionApiKey && settings?.llmApiKey);
 
     await ctx.runMutation(api.jobs.updateStatus, {
@@ -307,7 +312,7 @@ export const processVideo = action({
     });
 
     let transcript: Array<{ text: string; start: number; end: number }>;
-    let clips: any[];
+    let clips: ClipResult[];
 
     if (hasRealAPIs && args.audioBase64) {
       // ── REAL PIPELINE ────────────────────────────────────────────────

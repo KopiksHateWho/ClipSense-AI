@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Key,
@@ -89,7 +89,7 @@ const LLM_PROVIDERS: {
 ];
 
 export default function Settings() {
-  const { user, signOut } = useAuth();
+  useAuth(); // ensure auth context is mounted
   const navigate = useNavigate();
 
   const existingSettings = useQuery(api.apiSettings.get);
@@ -104,16 +104,16 @@ export default function Settings() {
   const [showLLMKey, setShowLLMKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
-  // Load existing settings
-  useEffect(() => {
-    if (existingSettings) {
-      setTranscriptionProvider(existingSettings.transcriptionProvider);
-      setTranscriptionApiKey(existingSettings.transcriptionApiKey);
-      setLLMProvider(existingSettings.llmProvider);
-      setLLmApiKey(existingSettings.llmApiKey);
-    }
-  }, [existingSettings]);
+  // Load existing settings once
+  if (existingSettings && !settingsLoaded) {
+    setTranscriptionProvider(existingSettings.transcriptionProvider);
+    setTranscriptionApiKey(existingSettings.transcriptionApiKey);
+    setLLMProvider(existingSettings.llmProvider);
+    setLLmApiKey(existingSettings.llmApiKey);
+    setSettingsLoaded(true);
+  }
 
   const handleSave = async () => {
     if (!transcriptionApiKey.trim() || !llmApiKey.trim()) return;
