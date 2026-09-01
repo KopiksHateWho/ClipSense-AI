@@ -25,6 +25,36 @@ import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import { trimVideo, downloadBlob, formatClipFilename } from "../lib/video-utils";
 
+type JobDoc = {
+  _id: Id<"jobs">;
+  userId: string;
+  sourceType: "upload" | "youtube";
+  sourceUrl?: string;
+  sourceName: string;
+  status: "pending" | "processing" | "transcribing" | "analyzing" | "completed" | "failed";
+  progress?: number;
+  error?: string;
+  duration?: number;
+  clipCount?: number;
+  exportedCount?: number;
+  createdAt: number;
+  completedAt?: number;
+};
+
+type ClipDoc = {
+  _id: Id<"clips">;
+  jobId: Id<"jobs">;
+  userId: string;
+  index: number;
+  startTime: number;
+  endTime: number;
+  score: number;
+  label: string;
+  reason: string;
+  exported: boolean;
+  createdAt: number;
+};
+
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -279,8 +309,8 @@ export default function Dashboard() {
   const [sourceTab, setSourceTab] = useState<"upload" | "youtube">("youtube");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isDragging, setIsDragging] = useState(false);
-  const [selectedClip, setSelectedClip] = useState<any>(null);
-  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [selectedClip, setSelectedClip] = useState<ClipDoc | null>(null);
+  const [selectedJob, setSelectedJob] = useState<JobDoc | null>(null);
   const [uploadedVideo, setUploadedVideo] = useState<{ blob: Blob; url: string; name: string } | null>(null);
 
   const createJob = useMutation(api.jobs.create);
@@ -350,7 +380,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleJobClick = (job: any) => {
+  const handleJobClick = (job: JobDoc) => {
     if (job.status === "completed") {
       setSelectedJob(job);
     }
