@@ -84,7 +84,7 @@ export async function autoEditClip(
 
   // Build ffmpeg command
   const filters: string[] = [];
-  let inputArgs = ["-ss", formatTime(startTime), "-i", "input.mp4", "-t", duration.toString()];
+  const inputArgs = ["-ss", formatTime(startTime), "-i", "input.mp4", "-t", duration.toString()];
 
   // Add fade in/out
   if (addFadeIn) {
@@ -165,7 +165,6 @@ export async function createCompilation(
     endTime: number;
     label?: string;
   }>,
-  options: EditOptions = {}
 ): Promise<Blob> {
   const ffmpeg = await getFFmpeg();
 

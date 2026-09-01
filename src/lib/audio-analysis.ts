@@ -255,7 +255,7 @@ export function combineSignals(
   }));
 
   // Find overlapping clips and merge scores
-  type CombinedClip = { startTime: number; endTime: number; score: number; label: string; reason: string; signal: "transcript" | "audio" };
+  type CombinedClip = { startTime: number; endTime: number; score: number; label: string; reason: string; signal: "transcript" | "audio"; signals?: string[] };
   const allClips: CombinedClip[] = [...transcriptFormatted];
   const used = new Set<number>();
 
@@ -284,7 +284,7 @@ export function combineSignals(
       );
       existing.label = existing.label + " + " + audio.label;
       existing.reason = existing.reason + " (corroborated by audio energy)";
-      (existing as any).signals = ["transcript", "audio"];
+      existing.signals = ["transcript", "audio"];
       used.add(bestOverlap);
     } else {
       // Pure audio clip
@@ -308,6 +308,6 @@ export function combineSignals(
       score: Math.round(c.score * 100) / 100,
       label: c.label,
       reason: c.reason,
-      signals: (c as any).signals || [c.signal],
+      signals: c.signals || [c.signal],
     }));
 }

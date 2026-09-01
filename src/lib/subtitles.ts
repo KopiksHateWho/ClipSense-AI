@@ -48,10 +48,10 @@ export function generateASSSubtitles(
   const alignment = position === "top" ? 8 : position === "center" ? 5 : 2;
 
   const styleMap: Record<string, string> = {
-    default: `Default: ${fontName},${fontSize},-1,2,0,0,0,0,${primaryColor},&H000000FF&,&H00000000&,&H80000000&,1,2,0,2,10,10,${marginV},1`,
-    karaoke: `Default: ${fontName},${fontSize},-1,2,0,0,0,0,${primaryColor},&H000000FF&,&H00000000&,&H80000000&,1,2,0,2,10,10,${marginV},1`,
-    minimal: `Default: ${fontName},${fontSize},-1,1,0,0,0,0,${primaryColor},&H000000FF&,&H00000000&,&H80000000&,0,1,0,0,10,10,${marginV},1`,
-    bold: `Default: ${fontName},${fontSize},-1,3,0,0,0,0,${primaryColor},&H000000FF&,&H00000000&,&H80000000&,1,3,0,2,10,10,${marginV},1`,
+    default: `Default: ${fontName},${fontSize},-1,2,0,0,0,0,${primaryColor},&H000000FF&,${outlineColor},&H80000000&,${alignment},2,0,2,10,10,${marginV},1`,
+    karaoke: `Default: ${fontName},${fontSize},-1,2,0,0,0,0,${primaryColor},&H000000FF&,${outlineColor},&H80000000&,${alignment},2,0,2,10,10,${marginV},1`,
+    minimal: `Default: ${fontName},${fontSize},-1,1,0,0,0,0,${primaryColor},&H000000FF&,${outlineColor},&H80000000&,${alignment},1,0,0,10,10,${marginV},1`,
+    bold: `Default: ${fontName},${fontSize},-1,3,0,0,0,0,${primaryColor},&H000000FF&,${outlineColor},&H80000000&,${alignment},3,0,2,10,10,${marginV},1`,
   };
 
   // Build ASS file
