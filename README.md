@@ -1,244 +1,892 @@
-## Overview
+# 🎬 ClipSense AI
 
-This project uses the following tech stack:
-- Vite
-- Typescript
-- React Router v7 (all imports from `react-router` instead of `react-router-dom`)
-- React 19 (for frontend components)
-- Tailwind v4 (for styling)
-- Shadcn UI (for UI components library)
-- Lucide Icons (for icons)
-- Convex (for backend & database)
-- Convex Auth (for authentication)
-- Framer Motion (for animations)
-- Three js (for 3d models)
+<p align="center">
+  <strong>Turn long-form videos into AI-discovered highlight clips.</strong>
+</p>
 
-All relevant files live in the 'src' directory.
-Use bun for the package manager.
+<p align="center">
+  Analyze. Understand. Score. Clip.
+</p>
 
-## Setup
+<p align="center">
+  <a href="https://github.com/KopiksHateWho/ClipSense-AI">
+    <img src="https://img.shields.io/badge/GitHub-ClipSense--AI-181717?style=for-the-badge&logo=github" alt="GitHub">
+  </a>
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 19">
+  <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Convex-Backend-EE342F?style=for-the-badge" alt="Convex">
+</p>
 
-This project is set up already and running on a cloud environment, as well as a convex development in the sandbox.
+<p align="center">
+  <img src="https://img.shields.io/badge/Vite-7-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/Framer%20Motion-12-0055FF?style=flat-square" alt="Framer Motion">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License">
+</p>
 
-## Environment Variables
+---
 
-The project is set up with project specific CONVEX_DEPLOYMENT and VITE_CONVEX_URL environment variables on the client side.
-The convex server has a separate set of environment variables that are accessible by the convex backend.
-Currently, these variables include auth-specific keys: JWKS, JWT_PRIVATE_KEY, and SITE_URL.
+## ✨ What is ClipSense AI?
 
+**ClipSense AI** is an AI-powered video intelligence application designed to find the most valuable moments inside long-form video.
 
-# Using Authentication (Important!)
+Instead of manually scrubbing through an entire podcast, interview, livestream, tutorial, or recording looking for moments worth clipping, ClipSense analyzes the video's audio, generates a timestamped transcript, and uses an LLM to identify and rank potential highlights.
 
-You must follow these conventions when using authentication.
+### The idea is simple:
 
-## Auth is already set up.
+> **Give ClipSense a long video. Let AI figure out where the interesting parts are.**
 
-All convex authentication functions are already set up. The auth currently uses email OTP and anonymous users, but can support more.
-The email OTP configuration is defined in `src/convex/auth/emailOtp.ts`. DO NOT MODIFY THIS FILE.
-Also, DO NOT MODIFY THESE AUTH FILES: `src/convex/auth.config.ts` and `src/convex/auth.ts`.
+The result is a collection of ranked clip candidates containing:
 
-## Using Convex Auth on the backend
+* ⏱️ Start and end timestamps
+* 📊 AI-generated clip score
+* 🏷️ Highlight category
+* 💡 Reason why the moment is worth clipping
 
-On the `src/convex/users.ts` file, you can use the `getCurrentUser` function to get the current user's data.
+ClipSense is built around a modular processing pipeline, allowing transcription and AI analysis providers to be changed independently.
 
-## Using Convex Auth on the frontend
+---
 
-The `/auth` page is already set up to use auth. Navigate to `/auth` for all log in / sign up sequences.
+## 🎯 Why ClipSense?
 
-You MUST use this hook to get user data. Never do this yourself without the hook:
-```typescript
-import { useAuth } from "@/hooks/use-auth";
+Finding good short-form content inside long videos is surprisingly tedious.
 
-const { isLoading, isAuthenticated, user, signIn, signOut } = useAuth();
+A 90-minute recording might contain only a handful of genuinely interesting moments. Traditionally, discovering them means watching the entire recording, manually taking notes, remembering timestamps, and then deciding what is actually worth turning into a clip.
+
+ClipSense changes that workflow.
+
+```text
+Long-form Video
+       │
+       ▼
+   Audio Input
+       │
+       ▼
+   Transcription
+       │
+       ▼
+ Timestamped Transcript
+       │
+       ▼
+  AI Highlight Analysis
+       │
+       ▼
+ Ranked Clip Candidates
+       │
+       ▼
+ Review & Export
 ```
 
-## Protected Routes
+The system focuses on **content discovery first**, rather than blindly cutting videos at arbitrary intervals.
 
-The starter `/dashboard` route is protected with `RequireAuth`, which sends
-signed-out users to `/auth?returnTo=<current route>`. Extend that page for the
-product's authenticated experience, and reuse `RequireAuth` when adding another
-protected route.
+---
 
-## Auth Page
+# 🚀 Core Features
 
-The auth page is defined in `src/pages/Auth.tsx`. Send sign-in and sign-up actions
-to `/auth`.
+## 🎥 Multiple Video Sources
 
-## Authorization
+ClipSense supports two primary input modes:
 
-You can perform authorization checks on the frontend and backend.
-On the frontend, you can use the `useAuth` hook to get the current user's data and authentication state.
-You should also be protecting queries, mutations, and actions at the base level, checking for authorization securely.
+* Local video uploads
+* YouTube URLs
 
-## Adding a redirect after auth
+For YouTube sources, ClipSense retrieves the audio required for downstream processing before continuing through the analysis pipeline.
 
-The `/auth` route in `src/main.tsx` redirects to `/dashboard` by default. If the
-product's main authenticated route is different, update `redirectAfterAuth` to
-that route. A validated same-origin `returnTo` query parameter takes priority so
-users can resume the protected page they originally requested. Never leave an
-authenticated product redirecting back to the public landing page.
+---
 
-## Complete authenticated products
+## 📝 AI-Powered Transcription
 
-When the requested product implies accounts, a workspace, a dashboard, or other
-signed-in functionality, the task is not complete with only a landing page and
-auth form. Build the main authenticated experience, protect its route, and verify
-that signing in reaches it.
+The transcription layer converts spoken content into timestamped segments that can be analyzed by the AI pipeline.
 
-# Frontend Conventions
+Supported transcription providers currently include:
 
-You will be using the Vite frontend with React 19, Tailwind v4, and Shadcn UI.
-Generally, pages should be in the `src/pages` folder, and components should be in the `src/components` folder.
-Shadcn primitives are located in the `src/components/ui` folder and should be used by default.
+| Provider       | Model / API                      |
+| -------------- | -------------------------------- |
+| **Groq**       | Whisper Large V3                 |
+| **Deepgram**   | Nova-2                           |
+| **OpenAI**     | Whisper                          |
+| **AssemblyAI** | Provider configuration available |
 
-## Page routing
+The provider architecture keeps transcription independent from the highlight-analysis model, making it easier to experiment with different services.
 
-Your page component should go under the `src/pages` folder.
-When adding a page, update the react router configuration in `src/main.tsx` to include the new route you just added.
+---
 
-## Shad CN conventions
+## 🧠 AI Highlight Detection
 
-Follow these conventions when using Shad CN components, which you should use by default.
-- Remember to use "cursor-pointer" to make the element clickable
-- For title text, use the "tracking-tight font-bold" class to make the text more readable
-- Always make apps MOBILE RESPONSIVE. This is important
-- AVOID NESTED CARDS. Try and not to nest cards, borders, components, etc. Nested cards add clutter and make the app look messy.
-- AVOID SHADOWS. Avoid adding any shadows to components. stick with a thin border without the shadow.
-- Avoid skeletons; instead, use the loader2 component to show a spinning loading state when loading data.
+Once the transcript is available, ClipSense sends the content to an LLM-based analysis layer.
 
+The AI looks for characteristics commonly associated with strong short-form moments, including:
 
-## Landing Pages
+* Strong opinions
+* Exclamations
+* Laughter
+* Dramatic moments
+* Interesting insights
+* Emotional moments
+* Reactions
+* Buildup and payoff
+* Potentially viral statements
 
-You must always create good-looking designer-level styles to your application. 
-- Make it well animated and fit a certain "theme", ie neo brutalist, retro, neumorphism, glass morphism, etc
+Each candidate receives a **clip potential score from 0.0 to 1.0**.
 
-Use known images and emojis from online.
-If the user is logged in already, show the get started button to say "Dashboard" or "Profile" instead to take them there.
+The system also generates a human-readable explanation describing why the moment was selected.
 
-## Responsiveness and formatting
+---
 
-Make sure pages are wrapped in a container to prevent the width stretching out on wide screens. Always make sure they are centered aligned and not off-center.
-Always make sure that your designs are mobile responsive. Verify the formatting to ensure it has correct max and min widths as well as mobile responsiveness.
-- Always create sidebars for protected dashboard pages and navigate between pages
-- Always create navbars for landing pages
-- On these bars, the created logo should be clickable and redirect to the index page
+## 🤖 Multiple LLM Providers
 
-## Animating with Framer Motion
+ClipSense isn't locked to a single AI provider.
 
-You must add animations to components using Framer Motion. It is already installed and configured in the project.
-To use it, import the `motion` component from `framer-motion` and use it to wrap the component you want to animate.
+The highlight-analysis layer currently supports:
 
+| Provider      | Model             |
+| ------------- | ----------------- |
+| **Anthropic** | Claude Sonnet     |
+| **OpenAI**    | GPT-4o Mini       |
+| **Google**    | Gemini            |
+| **SambaNova** | Llama-based model |
 
-### Other Items to animate
-- Fade in and Fade Out
-- Slide in and Slide Out animations
-- Rendering animations
-- Button clicks and UI elements
-Animate for all components, including on landing page and app pages.
+This architecture makes the project useful not only as an application, but also as a playground for comparing different LLM providers for content analysis.
 
-## Three JS Graphics
+---
 
-Your app comes with three js by default. You can use it to create 3D graphics for landing pages, games, etc.
+## 🎚️ Audio-Aware Analysis
 
+ClipSense can optionally provide audio-energy information to the AI alongside the transcript.
 
-## Colors
+This gives the analysis layer additional context about moments where the audio becomes more energetic.
 
-You can override colors in: `src/index.css`
-This uses the oklch color format for tailwind v4.
-Always use these color variable names.
-Make sure all ui components are set up to be mobile responsive and compatible with both light and dark mode.
-Set theme using `dark` or `light` variables at the parent className.
-
-## Styling and Theming
-
-When changing the theme, always change the underlying theme of the shad cn components app-wide under `src/components/ui` and the colors in the index.css file.
-Avoid hardcoding in colors unless necessary for a use case, and properly implement themes through the underlying shad cn ui components.
-When styling, ensure buttons and clickable items have pointer-click on them (don't by default).
-Always follow a set theme style and ensure it is tuned to the user's liking.
-
-## Toasts
-
-You should always use toasts to display results to the user, such as confirmations, results, errors, etc.
-Use the shad cn Sonner component as the toaster. For example:
-
+```text
+Transcript
+    +
+Audio Energy
+    ↓
+AI Highlight Analysis
+    ↓
+Better Context for Clip Selection
 ```
-import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
-export function SonnerDemo() {
-  return (
-    <Button
-      variant="outline"
-      onClick={() =>
-        toast("Event has been created", {
-          description: "Sunday, December 03, 2023 at 9:00 AM",
-          action: {
-            label: "Undo",
-            onClick: () => console.log("Undo"),
-          },
-        })
-      }
-    >
-      Show Toast
-    </Button>
-  )
+The goal isn't simply to find sentences that *sound* interesting on paper, but to provide additional signals about how the moment behaves as actual spoken content.
+
+---
+
+## 📊 Clip Scoring & Classification
+
+Every generated clip candidate contains structured metadata:
+
+```json
+{
+  "startTime": 42.5,
+  "endTime": 78.2,
+  "score": 0.91,
+  "label": "Insight",
+  "reason": "The speaker delivers a concise and highly actionable explanation."
 }
 ```
 
-Remember to import { toast } from "sonner". Usage: `toast("Event has been created.")`
+Possible labels include categories such as:
 
-## Dialogs
+* `High Energy`
+* `Funny`
+* `Insight`
+* `Dramatic`
+* `Emotional`
+* `Viral`
+* `Reaction`
 
-Always ensure your larger dialogs have a scroll in its content to ensure that its content fits the screen size. Make sure that the content is not cut off from the screen.
-Ideally, instead of using a new page, use a Dialog instead. 
+This makes the generated results much easier to review and organize than a simple list of timestamps.
 
-# Using the Convex backend
+---
 
-You will be implementing the convex backend. Follow your knowledge of convex and the documentation to implement the backend.
+## ⚡ Real-Time Processing State
 
-## The Convex Schema
+Video processing is represented as a job with explicit processing states.
 
-You must correctly follow the convex schema implementation.
-The schema is defined in `src/convex/schema.ts`.
-Do not include the `_id` and `_creationTime` fields in your queries (it is included by default for each table).
-Do not index `_creationTime` as it is indexed for you. Never have duplicate indexes.
-
-
-## Convex Actions: Using CRUD operations
-
-When running anything that involves external connections, you must use a convex action with "use node" at the top of the file.
-You cannot have queries or mutations in the same file as a "use node" action file. Thus, you must use pre-built queries and mutations in other files.
-You can also use the pre-installed internal crud functions for the database:
-
-```ts
-// in convex/users.ts
-import { crud } from "convex-helpers/server/crud";
-import schema from "./schema.ts";
-
-export const { create, read, update, destroy } = crud(schema, "users");
-
-// in some file, in an action:
-const user = await ctx.runQuery(internal.users.read, { id: userId });
-
-await ctx.runMutation(internal.users.update, {
-  id: userId,
-  patch: {
-    status: "inactive",
-  },
-});
+```text
+Pending
+   ↓
+Processing
+   ↓
+Transcribing
+   ↓
+Analyzing
+   ↓
+Completed
 ```
 
+If something goes wrong, the job can transition into:
 
-## Common Convex Mistakes To Avoid
+```text
+Failed
+```
 
-When using convex, make sure:
-- Document IDs are referenced as `_id` field, not `id`.
-- Document ID types are referenced as `Id<"TableName">`, not `string`.
-- Document object types are referenced as `Doc<"TableName">`.
-- Keep schemaValidation to false in the schema file.
-- You must correctly type your code so that it passes the type checker.
-- You must handle null / undefined cases of your convex queries for both frontend and backend, or else it will throw an error that your data could be null or undefined.
-- Always use the `@/folder` path, with `@/convex/folder/file.ts` syntax for importing convex files.
-- This includes importing generated files like `@/convex/_generated/server`, `@/convex/_generated/api`
-- Remember to import functions like useQuery, useMutation, useAction, etc. from `convex/react`
-- NEVER have return type validators.
+Progress information and error messages are persisted so the frontend can communicate what is happening instead of leaving users staring at a mysterious loading spinner, humanity's favorite UI element.
+
+---
+
+## 🔐 Authentication
+
+ClipSense uses **Convex Auth** for authentication.
+
+The current authentication system supports:
+
+* Email OTP authentication
+* Anonymous users
+* Protected application routes
+* User-specific data
+* Authenticated dashboard access
+
+Protected routes use a reusable authentication guard so authenticated application functionality is separated from public pages.
+
+---
+
+## 🔑 Bring Your Own API Keys
+
+ClipSense is designed around a **BYOK (Bring Your Own Key)** model.
+
+Users configure:
+
+### Transcription Provider
+
+```text
+Groq
+Deepgram
+AssemblyAI
+OpenAI
+```
+
+### LLM Provider
+
+```text
+Claude
+OpenAI
+Gemini
+SambaNova
+```
+
+The selected provider and credentials are stored as user-specific application settings and used by the processing pipeline.
+
+This makes provider selection an application-level configuration rather than something hardcoded into the processing engine.
+
+---
+
+# 🏗️ Architecture
+
+ClipSense follows a frontend + serverless backend architecture.
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│                     ClipSense AI                         │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  React 19 + TypeScript + Vite                          │
+│                    │                                    │
+│                    ▼                                    │
+│              Convex Client                              │
+│                    │                                    │
+├────────────────────┼────────────────────────────────────┤
+│                    ▼                                    │
+│              Convex Backend                              │
+│                                                         │
+│       ┌──────────────┬──────────────┐                  │
+│       │              │              │                  │
+│       ▼              ▼              ▼                  │
+│     Jobs           Clips       API Settings            │
+│       │              │              │                  │
+│       └──────────────┴──────────────┘                  │
+│                    │                                    │
+│                    ▼                                    │
+│             Video Processing                            │
+│                    │                                    │
+│        ┌───────────┴───────────┐                       │
+│        ▼                       ▼                       │
+│  Transcription             LLM Analysis                │
+│        │                       │                       │
+│  ┌─────┼─────┐          ┌─────┼────────┐              │
+│  ▼     ▼     ▼          ▼     ▼        ▼              │
+│ Groq Deepgram OpenAI   Claude OpenAI Gemini            │
+│                                      +                 │
+│                                  SambaNova              │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+# 🔬 Processing Pipeline
+
+The core processing engine lives in the Convex backend.
+
+### Step 1 — Ingest
+
+ClipSense receives either:
+
+* A local video upload
+* A YouTube URL
+
+For YouTube input, the application retrieves the audio stream before transcription.
+
+### Step 2 — Transcription
+
+Audio is sent to the configured transcription provider.
+
+The returned transcript contains timing information:
+
+```text
+[00:12] "The first thing you need to understand..."
+[00:17] "This completely changes the way..."
+[00:24] "And that's where most people make..."
+```
+
+### Step 3 — Context Construction
+
+The timestamped transcript is transformed into structured text for the analysis model.
+
+Optional audio-energy information can also be included.
+
+### Step 4 — Highlight Detection
+
+The selected LLM evaluates the transcript and identifies the strongest moments.
+
+The model returns:
+
+```text
+Start
+End
+Score
+Label
+Reason
+```
+
+### Step 5 — Persistence
+
+Generated clips are stored in Convex and associated with the processing job and user.
+
+### Step 6 — Completion
+
+The job is marked as completed and the generated clip candidates become available to the application.
+
+---
+
+# 🗂️ Project Structure
+
+```text
+ClipSense-AI/
+│
+├── public/
+│   ├── logo.svg
+│   └── manifest.webmanifest
+│
+├── src/
+│   │
+│   ├── assets/
+│   │
+│   ├── components/
+│   │   ├── ui/
+│   │   ├── LogoDropdown.tsx
+│   │   └── RequireAuth.tsx
+│   │
+│   ├── convex/
+│   │   ├── auth/
+│   │   ├── apiSettings.ts
+│   │   ├── auth.config.ts
+│   │   ├── auth.ts
+│   │   ├── clips.ts
+│   │   ├── http.ts
+│   │   ├── jobs.ts
+│   │   ├── processVideo.ts
+│   │   ├── schema.ts
+│   │   └── users.ts
+│   │
+│   ├── hooks/
+│   │
+│   ├── lib/
+│   │
+│   ├── pages/
+│   │
+│   ├── types/
+│   │
+│   ├── index.css
+│   ├── instrumentation.tsx
+│   └── main.tsx
+│
+├── .env.example
+├── components.json
+├── convex.json
+├── eslint.config.js
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── README.md
+```
+
+---
+
+# 🛠️ Tech Stack
+
+### Frontend
+
+| Technology         | Purpose                     |
+| ------------------ | --------------------------- |
+| **React 19**       | UI framework                |
+| **TypeScript**     | Type safety                 |
+| **Vite**           | Development & build tooling |
+| **React Router 7** | Application routing         |
+| **Tailwind CSS 4** | Styling                     |
+| **shadcn/ui**      | UI primitives               |
+| **Lucide React**   | Icons                       |
+| **Framer Motion**  | Animations                  |
+| **Three.js**       | 3D visual experiences       |
+
+### Backend
+
+| Technology          | Purpose                     |
+| ------------------- | --------------------------- |
+| **Convex**          | Serverless backend          |
+| **Convex Auth**     | Authentication              |
+| **Convex Database** | Jobs, clips & user settings |
+| **Convex Actions**  | External API integrations   |
+
+### AI / Media
+
+| Technology         | Purpose                       |
+| ------------------ | ----------------------------- |
+| **Groq Whisper**   | Speech transcription          |
+| **Deepgram**       | Speech transcription          |
+| **OpenAI Whisper** | Speech transcription          |
+| **Claude**         | Highlight analysis            |
+| **GPT-4o Mini**    | Highlight analysis            |
+| **Gemini**         | Highlight analysis            |
+| **SambaNova**      | Highlight analysis            |
+| **FFmpeg WASM**    | Browser-side media processing |
+
+---
+
+# 💻 Getting Started
+
+## Prerequisites
+
+Make sure you have:
+
+* [Node.js](https://nodejs.org/)
+* [Bun](https://bun.sh/)
+* A Convex project
+* A supported transcription API key
+* A supported LLM API key
+
+---
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/KopiksHateWho/ClipSense-AI.git
+cd ClipSense-AI
+```
+
+---
+
+## 2. Install dependencies
+
+Using Bun:
+
+```bash
+bun install
+```
+
+Or, if you prefer npm:
+
+```bash
+npm install
+```
+
+The repository is configured around Bun as its preferred package manager.
+
+---
+
+## 3. Configure environment variables
+
+Create your local environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Configure the required Convex variables:
+
+```env
+CONVEX_DEPLOYMENT=your_convex_deployment
+VITE_CONVEX_URL=your_convex_url
+```
+
+Authentication-related server configuration is handled separately by Convex.
+
+> **Never commit API keys, private keys, or production credentials to Git.**
+
+---
+
+## 4. Start the development server
+
+```bash
+bun run dev
+```
+
+The Vite development server will start locally.
+
+---
+
+# 🔐 API Provider Configuration
+
+After launching ClipSense, configure your AI providers through the application's settings.
+
+## Transcription
+
+Choose one:
+
+```text
+Groq
+Deepgram
+AssemblyAI
+OpenAI
+```
+
+Then provide the corresponding API key.
+
+## Highlight Analysis
+
+Choose one:
+
+```text
+Claude
+OpenAI
+Gemini
+SambaNova
+```
+
+Then provide the corresponding API key.
+
+ClipSense checks that both a transcription key and LLM key are configured before beginning video processing.
+
+---
+
+# 🧪 Development Commands
+
+```bash
+# Start development server
+bun run dev
+
+# Create production build
+bun run build
+
+# Run ESLint
+bun run lint
+
+# Format the project
+bun run format
+
+# Preview production build
+bun run preview
+```
+
+---
+
+# 📦 Data Model
+
+ClipSense currently organizes its persistent data around several core entities.
+
+### Users
+
+Stores authenticated user information and role metadata.
+
+### Jobs
+
+Represents a video-processing request.
+
+```text
+source
+status
+progress
+duration
+clipCount
+exportedCount
+createdAt
+completedAt
+```
+
+### Clips
+
+Represents an AI-discovered highlight.
+
+```text
+job
+startTime
+endTime
+score
+label
+reason
+exported
+createdAt
+```
+
+### API Settings
+
+Stores the user's selected AI providers and API credentials.
+
+```text
+transcriptionProvider
+transcriptionApiKey
+llmProvider
+llmApiKey
+```
+
+This separation allows one user to configure their own AI stack without changing the application's global configuration.
+
+---
+
+# 🧠 How ClipSense Chooses Moments
+
+ClipSense doesn't simply split a video every 30 seconds and call it artificial intelligence.
+
+The highlight-analysis prompt explicitly asks the model to consider signals such as:
+
+* Strong opinions
+* Laughter
+* Exclamations
+* Dramatic pauses
+* Buildup and payoff
+* Emotional moments
+* Reactions
+* Self-contained storytelling
+
+The model then produces a ranked set of candidate moments.
+
+Conceptually:
+
+```text
+                    Transcript
+                        │
+                        ▼
+              ┌─────────────────┐
+              │ Context Analysis │
+              └────────┬────────┘
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+       Emotion      Insight       Energy
+          │            │            │
+          └────────────┼────────────┘
+                       ▼
+                Clip Potential
+                       │
+                       ▼
+                 Ranked Clips
+```
+
+---
+
+# 🎨 UI & Design Philosophy
+
+ClipSense is built with a modern application-oriented UI rather than treating the project as a collection of disconnected AI demos.
+
+The frontend uses:
+
+* Responsive layouts
+* shadcn/ui primitives
+* Tailwind CSS
+* Framer Motion animations
+* Lucide icons
+* Light/dark theme support
+* Toast-based feedback
+* Protected dashboard routes
+
+The project also follows a deliberate visual rule:
+
+> **Less clutter. More hierarchy.**
+
+Avoiding unnecessary nested cards, excessive shadows, and overloaded layouts keeps the interface focused on the actual workflow.
+
+---
+
+# 🔒 Security Notes
+
+ClipSense is designed with user-scoped data and authenticated backend operations.
+
+Important considerations when deploying your own instance:
+
+* Never commit `.env` files.
+* Never expose private API keys through frontend source code.
+* Keep Convex authentication configuration protected.
+* Apply authorization checks to backend queries, mutations, and actions.
+* Do not expose production Convex credentials publicly.
+* Treat user-provided API credentials as sensitive information.
+
+### YouTube & Copyright
+
+ClipSense can process YouTube sources, but **you are responsible for ensuring that you have the necessary rights or permissions to process, edit, and redistribute the content you submit**.
+
+The existence of a download button somewhere in the universe does not magically transfer copyright ownership. Humanity has tried this trick before.
+
+---
+
+# 🚧 Current Status
+
+ClipSense AI is an actively developed project.
+
+### Current focus
+
+* AI-assisted highlight discovery
+* Multi-provider transcription
+* Multi-provider LLM analysis
+* Job processing pipeline
+* Clip scoring
+* Authenticated user workflows
+* Persistent clip history
+* Configurable AI providers
+
+### Planned / Possible Future Improvements
+
+* [ ] More advanced clip ranking
+* [ ] Better semantic context analysis
+* [ ] Speaker-aware analysis
+* [ ] More granular word-level timestamps
+* [ ] Advanced clip preview
+* [ ] Automated video rendering pipeline
+* [ ] Caption generation
+* [ ] Smart vertical reframing
+* [ ] Batch processing
+* [ ] Clip editing controls
+* [ ] Export presets for Shorts / Reels / TikTok
+* [ ] Analytics for generated clips
+* [ ] Provider benchmarking
+* [ ] Local AI model support
+
+---
+
+# 🗺️ Roadmap
+
+```text
+                    ClipSense AI
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+        ▼                ▼                ▼
+   Understand        Discover          Create
+        │                │                │
+   Transcript       AI Scoring       Clip Render
+        │                │                │
+   Audio Signals    Ranking System    Captions
+        │                │                │
+        └────────────────┼────────────────┘
+                         │
+                         ▼
+                 Content Workflow
+```
+
+### Phase 1 — Intelligence
+
+* [x] Video ingestion
+* [x] YouTube source support
+* [x] Audio extraction
+* [x] Multi-provider transcription
+* [x] Timestamped transcript
+* [x] LLM highlight detection
+* [x] Clip scoring
+* [x] Clip categorization
+* [x] AI-generated reasoning
+
+### Phase 2 — Creator Workflow
+
+* [ ] Advanced preview
+* [ ] Clip editing
+* [ ] Caption generation
+* [ ] Smart reframing
+* [ ] Export pipeline
+
+### Phase 3 — Content Automation
+
+* [ ] Batch processing
+* [ ] Platform presets
+* [ ] Publishing integrations
+* [ ] Content analytics
+* [ ] Automated content workflows
+
+---
+
+# 🤝 Contributing
+
+Contributions are welcome.
+
+### 1. Fork the repository
+
+```bash
+git fork
+```
+
+### 2. Create a feature branch
+
+```bash
+git checkout -b feature/your-feature
+```
+
+### 3. Make your changes
+
+Keep the implementation consistent with the existing architecture and TypeScript conventions.
+
+### 4. Verify your changes
+
+```bash
+bun run lint
+bun run build
+```
+
+### 5. Commit
+
+```bash
+git commit -m "feat: add your feature"
+```
+
+### 6. Push
+
+```bash
+git push origin feature/your-feature
+```
+
+### 7. Open a Pull Request
+
+Describe:
+
+* What changed
+* Why it changed
+* How it works
+* How it was tested
+
+---
+
+# 📄 License
+
+This project is licensed under the **MIT License**.
+
+---
+
+# 👨‍💻 Author
+
+Built by **KopiksHateWho**
+
+GitHub:
+
+**https://github.com/KopiksHateWho**
+
+Project:
+
+**https://github.com/KopiksHateWho/ClipSense-AI**
+
+---
+
+<p align="center">
+  <strong>ClipSense AI</strong>
+  <br>
+  Turning hours of video into moments worth watching.
+</p>
+
+<p align="center">
+  Made with React, Convex, TypeScript, and an unreasonable amount of AI.
+</p>
