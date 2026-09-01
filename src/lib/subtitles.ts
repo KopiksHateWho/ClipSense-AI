@@ -3,7 +3,7 @@
  * Creates ASS (Advanced SubStation Alpha) format for styled subtitles.
  */
 
-interface TranscriptSegment {
+export interface TranscriptSegment {
   text: string;
   start: number;
   end: number;

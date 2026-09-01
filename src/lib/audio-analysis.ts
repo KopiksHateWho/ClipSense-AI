@@ -255,7 +255,8 @@ export function combineSignals(
   }));
 
   // Find overlapping clips and merge scores
-  const allClips = [...transcriptFormatted];
+  type CombinedClip = { startTime: number; endTime: number; score: number; label: string; reason: string; signal: "transcript" | "audio" };
+  const allClips: CombinedClip[] = [...transcriptFormatted];
   const used = new Set<number>();
 
   for (const audio of audioClips) {
