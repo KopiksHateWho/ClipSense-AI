@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
   Youtube,
@@ -7,24 +7,45 @@ import {
   ChevronRight,
   Sparkles,
   Zap,
-  Target,
-  CheckCircle2,
   LogOut,
   Clock,
-  Activity,
-  BarChart3,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  ExternalLink,
+  Download,
+  Share2,
+  X,
 } from "lucide-react";
 import logo from "@/assets/logo.svg";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
+import { useMutation, useAction, useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
+import type { Id } from "../convex/_generated/dataModel";
 
-const DEMO_HISTORY = [
-  { id: 1, name: "Friday Night Stream", source: "YouTube", duration: "42:18", date: "Sep 1", clips: 4, exported: 0 },
-  { id: 2, name: "Creator Session Vol. 3", source: "YouTube", duration: "1:15:42", date: "Sep 1", clips: 6, exported: 2 },
-  { id: 3, name: "Podcast Episode 12", source: "Upload", duration: "58:03", date: "Aug 30", clips: 5, exported: 1 },
-  { id: 4, name: "Speedrun Highlights", source: "YouTube", duration: "2:31:07", date: "Aug 29", clips: 8, exported: 3 },
-  { id: 5, name: "Late Night Radio", source: "Upload", duration: "1:04:55", date: "Aug 28", clips: 3, exported: 0 },
-];
+function formatDuration(seconds: number) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function formatDate(timestamp: number) {
+  const d = new Date(timestamp);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[d.getMonth()]} ${d.getDate()}`;
+}
+
+const STATUS_CONFIG: Record<string, { icon: typeof Clock; color: string; label: string }> = {
+  pending: { icon: Clock, color: "text-muted-foreground", label: "Queued" },
+  processing: { icon: Loader2, color: "text-primary", label: "Processing" },
+  transcribing: { icon: Loader2, color: "text-primary", label: "Transcribing" },
+  analyzing: { icon: Loader2, color: "text-primary", label: "Analyzing" },
+  completed: { icon: CheckCircle2, color: "text-green-400", label: "Completed" },
+  failed: { icon: XCircle, color: "text-red-400", label: "Failed" },
+};
 
 const HOW_IT_WORKS = [
   {
@@ -44,23 +65,182 @@ const HOW_IT_WORKS = [
   },
 ];
 
-function formatDuration(seconds: number) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
+function ClipPreviewModal({
+  clip,
+  job,
+  onClose,
+}: {
+  clip: {
+    _id: Id<"clips">;
+    startTime: number;
+    endTime: number;
+    score: number;
+    label: string;
+    reason: string;
+    exported: boolean;
+  };
+  job: {
+    sourceName: string;
+    sourceUrl?: string;
+    duration?: number;
+  };
+  onClose: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="clip-card w-full max-w-2xl p-0 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative aspect-video bg-black/50 flex items-center justify-center">
+          <div className="text-center">
+            <Play className="size-16 text-primary/40 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+              Preview: {formatDuration(clip.startTime)} – {formatDuration(clip.endTime)}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 size-8 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">{clip.label}</h3>
+              <p className="text-sm text-muted-foreground">{clip.reason}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Score</p>
+                <p className="text-lg font-bold text-primary">{Math.round(clip.score * 100)}%</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mb-5">
+            <span className="clip-mono bg-secondary/50 px-2 py-1 rounded">
+              {formatDuration(clip.startTime)} – {formatDuration(clip.endTime)}
+            </span>
+            <span>·</span>
+            <span>{clip.endTime - clip.startTime}s clip</span>
+            <span>·</span>
+            <span>From: {job.sourceName}</span>
+          </div>
+
+          <div className="flex gap-3">
+            <button className="clip-btn-primary flex-1 flex items-center justify-center gap-2 text-sm">
+              <Download className="size-4" />
+              Export Clip
+            </button>
+            <button className="px-4 py-2.5 rounded-lg border border-border/60 text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors flex items-center gap-2">
+              <Share2 className="size-4" />
+              Share
+            </button>
+            {job.sourceUrl && (
+              <a
+                href={job.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2.5 rounded-lg border border-border/60 text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors flex items-center gap-2"
+              >
+                <ExternalLink className="size-4" />
+                Source
+              </a>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 }
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [sourceTab, setSourceTab] = useState<"upload" | "youtube">("upload");
+  const [sourceTab, setSourceTab] = useState<"upload" | "youtube">("youtube");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedClip, setSelectedClip] = useState<any>(null);
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+
+  const createJob = useMutation(api.jobs.create);
+  const processVideo = useAction(api.processVideo.processVideo);
+  const jobs = useQuery(api.jobs.list);
+
+  const selectedJobClips = useQuery(
+    api.clips.listByJob,
+    selectedJob ? { jobId: selectedJob._id } : "skip"
+  );
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
+
+  const extractVideoName = (url: string) => {
+    try {
+      const urlObj = new URL(url);
+      if (urlObj.hostname.includes("youtube.com")) {
+        return urlObj.searchParams.get("v")?.slice(0, 20) || "YouTube Video";
+      }
+      if (urlObj.hostname.includes("youtu.be")) {
+        return urlObj.pathname.slice(1, 21) || "YouTube Video";
+      }
+    } catch {
+      // invalid URL
+    }
+    return "YouTube Video";
+  };
+
+  const handleSubmit = async () => {
+    if (!youtubeUrl.trim() && sourceTab === "youtube") return;
+
+    try {
+      const sourceName = sourceTab === "youtube"
+        ? extractVideoName(youtubeUrl)
+        : "Uploaded video";
+
+      const jobId = await createJob({
+        sourceType: sourceTab,
+        sourceUrl: sourceTab === "youtube" ? youtubeUrl : undefined,
+        sourceName,
+      });
+
+      // Fire and forget — processing runs async in the action
+      processVideo({
+        jobId,
+        sourceType: sourceTab,
+        sourceUrl: sourceTab === "youtube" ? youtubeUrl : undefined,
+        sourceName,
+      }).catch(console.error);
+
+      setYoutubeUrl("");
+    } catch (error) {
+      console.error("Error creating job:", error);
+    }
+  };
+
+  const handleJobClick = (job: any) => {
+    if (job.status === "completed") {
+      setSelectedJob(job);
+    }
+  };
+
+  const activeJobs = jobs?.filter((j) => j.status !== "completed" && j.status !== "failed") || [];
+  const completedJobs = jobs?.filter((j) => j.status === "completed" || j.status === "failed") || [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -79,7 +259,12 @@ export default function Dashboard() {
               <Sparkles className="size-3.5" />
               New analysis
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-md transition-colors">
+            <button
+              onClick={() => {
+                document.getElementById("history-section")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-md transition-colors"
+            >
               <Clock className="size-3.5" />
               History
             </button>
@@ -88,7 +273,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-1.5 text-xs clip-mono text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-md">
             <Zap className="size-3 clip-accent-text" />
-            <span className="text-primary font-medium">$1.19</span>
+            <span className="text-primary font-medium">{completedJobs.length > 0 ? `$${(completedJobs.length * 1.19).toFixed(2)}` : "$0.00"}</span>
             <span>used</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-secondary/50 rounded-md">
@@ -128,7 +313,7 @@ export default function Dashboard() {
               <span className="clip-accent-text">clip?</span>
             </h1>
             <div className="hidden lg:flex items-center gap-2 text-right">
-              <span className="text-3xl font-bold text-foreground">36</span>
+              <span className="text-3xl font-bold text-foreground">{completedJobs.length}</span>
               <span className="clip-label leading-tight text-right">
                 ANALYSES
                 <br />
@@ -204,7 +389,6 @@ export default function Dashboard() {
                 onDrop={(e) => {
                   e.preventDefault();
                   setIsDragging(false);
-                  // Handle file drop
                 }}
               >
                 <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
@@ -224,10 +408,15 @@ export default function Dashboard() {
                   placeholder="https://youtube.com/watch?v=..."
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && youtubeUrl.trim()) {
+                      handleSubmit();
+                    }
+                  }}
                   className="w-full px-4 py-3 bg-background border border-border/60 rounded-lg text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Paste a YouTube video or playlist URL
+                  Paste a YouTube video URL to analyze
                 </p>
               </div>
             )}
@@ -243,7 +432,11 @@ export default function Dashboard() {
             </div>
 
             {/* Submit Button */}
-            <button className="clip-btn-primary w-full mt-5 flex items-center justify-center gap-2 text-[15px]">
+            <button
+              onClick={handleSubmit}
+              disabled={sourceTab === "youtube" && !youtubeUrl.trim()}
+              className="clip-btn-primary w-full mt-5 flex items-center justify-center gap-2 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Find my best moments
               <ChevronRight className="size-4" />
             </button>
@@ -288,8 +481,61 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
+        {/* Active Processing Jobs */}
+        <AnimatePresence>
+          {activeJobs.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="clip-card p-6 mb-5"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Loader2 className="size-4 text-primary animate-spin" />
+                <span className="clip-label">Processing</span>
+              </div>
+              <div className="space-y-3">
+                {activeJobs.map((job) => {
+                  const statusConfig = STATUS_CONFIG[job.status] || STATUS_CONFIG.pending;
+                  const StatusIcon = statusConfig.icon;
+                  return (
+                    <div
+                      key={job._id}
+                      className="flex items-center gap-4 p-3 rounded-lg bg-secondary/30"
+                    >
+                      <StatusIcon className={`size-5 ${statusConfig.color} ${job.status !== "pending" ? "animate-spin" : ""}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {job.sourceName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {statusConfig.label} · {job.sourceType === "youtube" ? "YouTube" : "Upload"}
+                        </p>
+                      </div>
+                      <div className="w-24">
+                        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-primary rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${job.progress || 0}%` }}
+                            transition={{ duration: 0.5 }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground text-right mt-1 clip-mono">
+                          {job.progress || 0}%
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* History Section */}
         <motion.div
+          id="history-section"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
@@ -300,47 +546,136 @@ export default function Dashboard() {
               <span className="clip-mono text-xs clip-accent-text font-semibold">03</span>
               <span className="clip-label">/ History</span>
             </div>
-            <span className="text-xs text-muted-foreground clip-mono">36 total</span>
+            <span className="text-xs text-muted-foreground clip-mono">{completedJobs.length} total</span>
           </div>
 
           <h2 className="text-lg font-semibold mb-4">Recent analyses</h2>
 
-          <div className="divide-y divide-border/40">
-            {DEMO_HISTORY.map((item) => (
-              <div key={item.id} className="clip-history-row cursor-pointer group">
-                <div className="flex items-center gap-4">
-                  <div className="size-9 rounded-lg bg-secondary/80 flex items-center justify-center shrink-0">
-                    {item.source === "YouTube" ? (
-                      <Youtube className="size-4 text-red-400" />
-                    ) : (
-                      <Play className="size-4 text-muted-foreground" />
-                    )}
+          {completedJobs.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-sm text-muted-foreground">
+                No analyses yet. Paste a YouTube URL above to get started.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/40">
+              {completedJobs.map((job) => {
+                const statusConfig = STATUS_CONFIG[job.status] || STATUS_CONFIG.pending;
+                const StatusIcon = statusConfig.icon;
+                return (
+                  <div
+                    key={job._id}
+                    className="clip-history-row cursor-pointer group"
+                    onClick={() => handleJobClick(job)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="size-9 rounded-lg bg-secondary/80 flex items-center justify-center shrink-0">
+                        {job.sourceType === "youtube" ? (
+                          <Youtube className="size-4 text-red-400" />
+                        ) : (
+                          <Play className="size-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                          {job.sourceType === "youtube" ? "YouTube" : "Upload"} source · {job.sourceName}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 clip-mono">
+                          {formatDate(job.createdAt)} · {job.duration ? formatDuration(job.duration) : "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-foreground">
+                          {job.clipCount || 0} highlights
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {job.exportedCount || 0} exported
+                        </p>
+                      </div>
+                      <StatusIcon className={`size-4 ${statusConfig.color}`} />
+                      <ChevronRight className="size-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-                      {item.source} source · {item.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 clip-mono">
-                      {item.date} · {item.duration}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-foreground">
-                      {item.clips} highlights
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.exported} exported
-                    </p>
-                  </div>
-                  <ChevronRight className="size-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </motion.div>
+
+        {/* Clip Results for Selected Job */}
+        <AnimatePresence>
+          {selectedJob && selectedJobClips && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              className="clip-card p-6 mt-5"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Clip Results</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {selectedJob.sourceName} · {selectedJobClips.length} clips found
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedJob(null)}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="grid gap-3">
+                {selectedJobClips.map((clip, idx) => (
+                  <motion.div
+                    key={clip._id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="flex items-center gap-4 p-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition-colors group"
+                    onClick={() => setSelectedClip(clip)}
+                  >
+                    <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="clip-mono text-sm font-bold text-primary">
+                        {idx + 1}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-sm font-semibold text-foreground">{clip.label}</p>
+                        <span className="text-[10px] clip-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                          {Math.round(clip.score * 100)}%
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{clip.reason}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="clip-mono text-xs text-muted-foreground">
+                        {formatDuration(clip.startTime)} – {formatDuration(clip.endTime)}
+                      </span>
+                      <ChevronRight className="size-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
+
+      {/* Clip Preview Modal */}
+      <AnimatePresence>
+        {selectedClip && selectedJob && (
+          <ClipPreviewModal
+            clip={selectedClip}
+            job={selectedJob}
+            onClose={() => setSelectedClip(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
