@@ -16,6 +16,7 @@ import {
   Download,
   Share2,
   X,
+  Settings,
 } from "lucide-react";
 import logo from "@/assets/logo.svg";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,7 +24,7 @@ import { useNavigate } from "react-router";
 import { useMutation, useAction, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
-import { trimVideo, downloadBlob, formatClipFilename } from "../lib/video-utils";
+import { trimVideo, downloadBlob, formatClipFilename, extractAudio } from "../lib/video-utils";
 
 type JobDoc = {
   _id: Id<"jobs">;
@@ -366,12 +367,23 @@ export default function Dashboard() {
         sourceName,
       });
 
+      // Extract audio from uploaded video for real transcription
+      let audioBase64: string | undefined;
+      if (sourceTab === "upload" && uploadedVideo) {
+        try {
+          audioBase64 = await extractAudio(uploadedVideo.blob);
+        } catch (err) {
+          console.error("Audio extraction failed:", err);
+        }
+      }
+
       // Fire and forget — processing runs async in the action
       processVideo({
         jobId,
         sourceType: sourceTab,
         sourceUrl: sourceTab === "youtube" ? youtubeUrl : undefined,
         sourceName,
+        audioBase64,
       }).catch(console.error);
 
       setYoutubeUrl("");
@@ -431,6 +443,13 @@ export default function Dashboard() {
             </div>
             <span className="hidden sm:inline">{user?.name || "User"}</span>
           </div>
+          <button
+            onClick={() => navigate("/settings")}
+            className="p-2 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+            title="Settings"
+          >
+            <Settings className="size-4" />
+          </button>
           <button
             onClick={handleSignOut}
             className="p-2 text-muted-foreground hover:text-foreground rounded-md transition-colors"

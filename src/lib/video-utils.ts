@@ -124,6 +124,54 @@ export function downloadBlob(blob: Blob, filename: string): void {
 /**
  * Format duration for filename
  */
+/**
+ * Extract audio from a video file as base64 WebM
+ */
+export async function extractAudio(videoBlob: Blob): Promise<string> {
+  const ffmpeg = await initFFmpeg();
+
+  // Write input file
+  const inputData = await fetchFile(videoBlob);
+  await ffmpeg.writeFile("input.mp4", inputData);
+
+  // Extract audio as WebM/Opus (compact, works with most APIs)
+  await ffmpeg.exec([
+    "-i", "input.mp4",
+    "-vn",
+    "-acodec", "libopus",
+    "-b:a", "32k",
+    "-ar", "16000",
+    "-ac", "1",
+    "output.webm",
+  ]);
+
+  // Read output
+  const outputData = await ffmpeg.readFile("output.webm");
+
+  // Clean up
+  await ffmpeg.deleteFile("input.mp4");
+  await ffmpeg.deleteFile("output.webm");
+
+  // Convert to base64
+  let buffer: ArrayBuffer;
+  if (outputData instanceof Uint8Array) {
+    buffer = outputData.buffer.slice(
+      outputData.byteOffset,
+      outputData.byteOffset + outputData.byteLength
+    ) as ArrayBuffer;
+  } else {
+    buffer = new TextEncoder().encode(String(outputData)).buffer as ArrayBuffer;
+  }
+
+  // Convert ArrayBuffer to base64
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 export function formatClipFilename(
   sourceName: string,
   startTime: number,
