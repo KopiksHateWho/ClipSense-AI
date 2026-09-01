@@ -19,7 +19,6 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 
 type TranscriptionProvider = "groq" | "deepgram" | "assemblyai" | "openai";
-type LLMProvider = "claude" | "openai" | "gemini";
 
 const TRANSCRIPTION_PROVIDERS: {
   id: TranscriptionProvider;
@@ -58,13 +57,32 @@ const TRANSCRIPTION_PROVIDERS: {
   },
 ];
 
+type LLMProvider = "claude" | "openai" | "gemini" | "sambanova";
+
 const LLM_PROVIDERS: {
   id: LLMProvider;
   name: string;
   description: string;
   url: string;
   pricing: string;
+  free?: boolean;
 }[] = [
+  {
+    id: "sambanova",
+    name: "SambaNova (Llama 3)",
+    description: "Free LLM inference, no credit card needed.",
+    url: "https://cloud.sambanova.ai/",
+    pricing: "FREE",
+    free: true,
+  },
+  {
+    id: "gemini",
+    name: "Google Gemini",
+    description: "Free tier generous, good at analysis.",
+    url: "https://aistudio.google.com/apikey",
+    pricing: "Free tier available",
+    free: true,
+  },
   {
     id: "claude",
     name: "Claude (Anthropic)",
@@ -78,13 +96,6 @@ const LLM_PROVIDERS: {
     description: "Fast, cheap, widely used.",
     url: "https://platform.openai.com/api-keys",
     pricing: "~$0.0005/video",
-  },
-  {
-    id: "gemini",
-    name: "Google Gemini",
-    description: "Free tier generous, good at analysis.",
-    url: "https://aistudio.google.com/apikey",
-    pricing: "Free tier available",
   },
 ];
 
@@ -187,6 +198,56 @@ export default function Settings() {
             Bring your own API keys — you control the pipeline. We never store
             or share your keys with third parties.
           </p>
+
+          {/* Quick Setup — Free Options */}
+          <div className="clip-card p-6 mb-6 border-primary/20">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="size-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <span className="text-lg">⚡</span>
+              </div>
+              <div>
+                <h2 className="text-base font-semibold">Quick Setup (Free)</h2>
+                <p className="text-xs text-muted-foreground">
+                  Get running in 2 minutes — no credit card needed
+                </p>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <a
+                href="https://console.groq.com/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors group"
+              >
+                <div className="size-8 rounded-md bg-orange-500/10 flex items-center justify-center shrink-0">
+                  <Mic className="size-4 text-orange-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">Groq — Free Transcription</p>
+                  <p className="text-[11px] text-muted-foreground">14,400 min/month free Whisper</p>
+                </div>
+                <ExternalLink className="size-3.5 text-muted-foreground group-hover:text-foreground shrink-0" />
+              </a>
+              <a
+                href="https://cloud.sambanova.ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors group"
+              >
+                <div className="size-8 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <Brain className="size-4 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">SambaNova — Free LLM</p>
+                  <p className="text-[11px] text-muted-foreground">Free Llama 3 inference, no card</p>
+                </div>
+                <ExternalLink className="size-3.5 text-muted-foreground group-hover:text-foreground shrink-0" />
+              </a>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-3 text-center">
+              Sign up on both, copy your API keys, paste below. Done!
+            </p>
+          </div>
 
           {/* Security note */}
           <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10 mb-8">

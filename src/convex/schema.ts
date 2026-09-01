@@ -79,6 +79,7 @@ const schema = defineSchema(
         v.literal("claude"),
         v.literal("openai"),
         v.literal("gemini"),
+        v.literal("sambanova"),
       ),
       llmApiKey: v.string(),
       createdAt: v.number(),

@@ -31,6 +31,7 @@ export const save = mutation({
       v.literal("claude"),
       v.literal("openai"),
       v.literal("gemini"),
+      v.literal("sambanova"),
     ),
     llmApiKey: v.string(),
   },

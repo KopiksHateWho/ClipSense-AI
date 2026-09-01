@@ -162,11 +162,29 @@ async function scoreWithGemini(transcript: string, apiKey: string, audioHints?: 
   return match ? JSON.parse(match[0]) : [];
 }
 
+async function scoreWithSambaNova(transcript: string, apiKey: string, audioHints?: string): Promise<ClipResult[]> {
+  const res = await fetch("https://api.sambanova.ai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "Meta-Llama-3.1-8B-Instruct",
+      messages: [{ role: "user", content: buildScoringPrompt(transcript, audioHints) }],
+      temperature: 0.3,
+    }),
+  });
+  if (!res.ok) throw new Error(`SambaNova scoring failed: ${await res.text()}`);
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content || "[]";
+  const match = text.match(/\[[\s\S]*\]/);
+  return match ? JSON.parse(match[0]) : [];
+}
+
 async function scoreTranscript(transcript: string, provider: string, apiKey: string, audioHints?: string): Promise<ClipResult[]> {
   switch (provider) {
     case "claude": return scoreWithClaude(transcript, apiKey, audioHints);
     case "openai": return scoreWithOpenAI(transcript, apiKey, audioHints);
     case "gemini": return scoreWithGemini(transcript, apiKey, audioHints);
+    case "sambanova": return scoreWithSambaNova(transcript, apiKey, audioHints);
     default: throw new Error(`Unsupported LLM provider: ${provider}`);
   }
 }
