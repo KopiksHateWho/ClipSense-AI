@@ -317,11 +317,14 @@ export default function Dashboard() {
   const createJob = useMutation(api.jobs.create);
   const processVideo = useAction(api.processVideo.processVideo);
   const jobs = useQuery(api.jobs.list);
+  const apiSettings = useQuery(api.apiSettings.get);
 
   const selectedJobClips = useQuery(
     api.clips.listByJob,
     selectedJob ? { jobId: selectedJob._id } : "skip"
   );
+
+  const hasAPIs = !!(apiSettings?.transcriptionApiKey && apiSettings?.llmApiKey);
 
   const handleSignOut = async () => {
     await signOut();
@@ -393,9 +396,7 @@ export default function Dashboard() {
   };
 
   const handleJobClick = (job: JobDoc) => {
-    if (job.status === "completed") {
-      setSelectedJob(job);
-    }
+    setSelectedJob(job);
   };
 
   const activeJobs = jobs?.filter((j) => j.status !== "completed" && j.status !== "failed") || [];
@@ -492,6 +493,27 @@ export default function Dashboard() {
             strongest hook, payoff, and share potential.
           </p>
         </motion.div>
+
+        {/* API Key Warning */}
+        {!hasAPIs && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex items-start gap-3"
+          >
+            <Settings className="size-5 text-amber-400 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-300">API keys required</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Configure your transcription and LLM API keys in{' '}
+                <button onClick={() => navigate("/settings")} className="underline text-amber-300 hover:text-amber-200">
+                  Settings
+                </button>{' '}
+                before analyzing. We support Groq, Deepgram, OpenAI for transcription and Claude, OpenAI, Gemini for scoring.
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         {/* Two Column: Source + How It Works */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-8">
@@ -631,7 +653,7 @@ export default function Dashboard() {
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
-              disabled={(sourceTab === "youtube" && !youtubeUrl.trim()) || (sourceTab === "upload" && !uploadedVideo)}
+              disabled={!hasAPIs || (sourceTab === "youtube" && !youtubeUrl.trim()) || (sourceTab === "upload" && !uploadedVideo)}
               className="clip-btn-primary w-full mt-5 flex items-center justify-center gap-2 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Find my best moments
@@ -803,7 +825,7 @@ export default function Dashboard() {
 
         {/* Clip Results for Selected Job */}
         <AnimatePresence>
-          {selectedJob && selectedJobClips && (
+          {selectedJob && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -812,9 +834,9 @@ export default function Dashboard() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold">Clip Results</h2>
+                  <h2 className="text-lg font-semibold">Analysis Results</h2>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    {selectedJob.sourceName} · {selectedJobClips.length} clips found
+                    {selectedJob.sourceName}
                   </p>
                 </div>
                 <button
@@ -825,8 +847,15 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              {selectedJob.status === "failed" && selectedJob.error && (
+                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 mb-4">
+                  <p className="text-sm font-medium text-red-400">Processing failed</p>
+                  <p className="text-xs text-muted-foreground mt-1">{selectedJob.error}</p>
+                </div>
+              )}
+
               <div className="grid gap-3">
-                {selectedJobClips.map((clip, idx) => (
+                {selectedJobClips && selectedJobClips.map((clip, idx) => (
                   <motion.div
                     key={clip._id}
                     initial={{ opacity: 0, x: -10 }}
