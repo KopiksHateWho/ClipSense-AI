@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
@@ -23,6 +23,7 @@ import { useNavigate } from "react-router";
 import { useMutation, useAction, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
+import { trimVideo, downloadBlob, formatClipFilename } from "../lib/video-utils";
 
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -69,6 +70,7 @@ function ClipPreviewModal({
   clip,
   job,
   onClose,
+  videoSource,
 }: {
   clip: {
     _id: Id<"clips">;
@@ -84,8 +86,66 @@ function ClipPreviewModal({
     sourceUrl?: string;
     duration?: number;
   };
+  videoSource: string | null;
   onClose: () => void;
 }) {
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = useCallback(async () => {
+    if (!videoSource) {
+      setExportError("No video source available. Upload a video or provide a URL to export clips.");
+      return;
+    }
+
+    setIsExporting(true);
+    setExportProgress(0);
+    setExportError(null);
+
+    try {
+      // Fetch the source video
+      setExportProgress(10);
+      const response = await fetch(videoSource);
+      if (!response.ok) throw new Error("Failed to fetch video source");
+      const videoBlob = await response.blob();
+
+      setExportProgress(30);
+
+      // Trim the video
+      const trimmedBlob = await trimVideo(
+        videoBlob,
+        clip.startTime,
+        clip.endTime,
+        "clip.mp4"
+      );
+
+      setExportProgress(90);
+
+      // Generate filename
+      const filename = formatClipFilename(
+        job.sourceName,
+        clip.startTime,
+        clip.endTime,
+        clip.label
+      );
+
+      // Download
+      downloadBlob(trimmedBlob, filename);
+
+      setExportProgress(100);
+    } catch (error) {
+      console.error("Export failed:", error);
+      setExportError(
+        error instanceof Error
+          ? error.message
+          : "Export failed. Please try again."
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }, [videoSource, clip, job]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -107,6 +167,11 @@ function ClipPreviewModal({
             <p className="text-sm text-muted-foreground">
               Preview: {formatDuration(clip.startTime)} – {formatDuration(clip.endTime)}
             </p>
+            {!videoSource && (
+              <p className="text-xs text-amber-400/80 mt-2">
+                Video source needed for preview and export
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -140,10 +205,51 @@ function ClipPreviewModal({
             <span>From: {job.sourceName}</span>
           </div>
 
+          {/* Export Progress */}
+          {isExporting && (
+            <div className="mb-4 p-3 rounded-lg bg-secondary/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Loader2 className="size-4 text-primary animate-spin" />
+                <span className="text-sm text-foreground">Exporting clip...</span>
+              </div>
+              <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-primary rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${exportProgress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground text-right mt-1 clip-mono">
+                {exportProgress}%
+              </p>
+            </div>
+          )}
+
+          {/* Export Error */}
+          {exportError && (
+            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+              <p className="text-sm text-red-400">{exportError}</p>
+            </div>
+          )}
+
           <div className="flex gap-3">
-            <button className="clip-btn-primary flex-1 flex items-center justify-center gap-2 text-sm">
-              <Download className="size-4" />
-              Export Clip
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="clip-btn-primary flex-1 flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="size-4" />
+                  Export Clip
+                </>
+              )}
             </button>
             <button className="px-4 py-2.5 rounded-lg border border-border/60 text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors flex items-center gap-2">
               <Share2 className="size-4" />
@@ -175,6 +281,7 @@ export default function Dashboard() {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedClip, setSelectedClip] = useState<any>(null);
   const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [uploadedVideo, setUploadedVideo] = useState<{ blob: Blob; url: string; name: string } | null>(null);
 
   const createJob = useMutation(api.jobs.create);
   const processVideo = useAction(api.processVideo.processVideo);
@@ -188,6 +295,15 @@ export default function Dashboard() {
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const handleFileUpload = (file: File) => {
+    // Revoke previous URL if exists
+    if (uploadedVideo?.url) {
+      URL.revokeObjectURL(uploadedVideo.url);
+    }
+    const url = URL.createObjectURL(file);
+    setUploadedVideo({ blob: file, url, name: file.name });
   };
 
   const extractVideoName = (url: string) => {
@@ -206,12 +322,13 @@ export default function Dashboard() {
   };
 
   const handleSubmit = async () => {
-    if (!youtubeUrl.trim() && sourceTab === "youtube") return;
+    if (sourceTab === "youtube" && !youtubeUrl.trim()) return;
+    if (sourceTab === "upload" && !uploadedVideo) return;
 
     try {
       const sourceName = sourceTab === "youtube"
         ? extractVideoName(youtubeUrl)
-        : "Uploaded video";
+        : uploadedVideo?.name || "Uploaded video";
 
       const jobId = await createJob({
         sourceType: sourceTab,
@@ -389,17 +506,48 @@ export default function Dashboard() {
                 onDrop={(e) => {
                   e.preventDefault();
                   setIsDragging(false);
+                  const file = e.dataTransfer.files[0];
+                  if (file && file.type.startsWith("video/")) {
+                    handleFileUpload(file);
+                  }
                 }}
+                onClick={() => document.getElementById("file-upload-input")?.click()}
               >
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <Upload className="size-5 text-primary" />
-                </div>
-                <p className="text-sm font-medium text-foreground mb-1">
-                  Choose a video file
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  MP4, MOV, or WebM · up to 2 GB
-                </p>
+                <input
+                  id="file-upload-input"
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file);
+                  }}
+                />
+                {uploadedVideo ? (
+                  <>
+                    <div className="size-10 rounded-full bg-green-500/10 flex items-center justify-center mb-3">
+                      <CheckCircle2 className="size-5 text-green-500" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground mb-1">
+                      {uploadedVideo.name}
+                    </p>
+                    <p className="text-xs text-green-500">
+                      Video loaded · Ready to analyze
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                      <Upload className="size-5 text-primary" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground mb-1">
+                      Choose a video file
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      MP4, MOV, or WebM · up to 2 GB
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
@@ -434,7 +582,7 @@ export default function Dashboard() {
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
-              disabled={sourceTab === "youtube" && !youtubeUrl.trim()}
+              disabled={(sourceTab === "youtube" && !youtubeUrl.trim()) || (sourceTab === "upload" && !uploadedVideo)}
               className="clip-btn-primary w-full mt-5 flex items-center justify-center gap-2 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Find my best moments
@@ -672,6 +820,11 @@ export default function Dashboard() {
           <ClipPreviewModal
             clip={selectedClip}
             job={selectedJob}
+            videoSource={
+              selectedJob.sourceType === "upload" && uploadedVideo
+                ? uploadedVideo.url
+                : null
+            }
             onClose={() => setSelectedClip(null)}
           />
         )}
