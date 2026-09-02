@@ -17,6 +17,7 @@ import {
   Share2,
   X,
   Settings,
+  User,
 } from "lucide-react";
 import logo from "@/assets/logo.svg";
 import { useAuth } from "@/hooks/use-auth";
@@ -444,6 +445,13 @@ export default function Dashboard() {
             </div>
             <span className="hidden sm:inline">{user?.name || "User"}</span>
           </div>
+          <button
+            onClick={() => navigate("/profile")}
+            className="p-2 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+            title="Profile"
+          >
+            <User className="size-4" />
+          </button>
           <button
             onClick={() => navigate("/settings")}
             className="p-2 text-muted-foreground hover:text-foreground rounded-md transition-colors"

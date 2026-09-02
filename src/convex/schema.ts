@@ -26,7 +26,13 @@ const schema = defineSchema(
       emailVerificationTime: v.optional(v.number()),
       isAnonymous: v.optional(v.boolean()),
       role: v.optional(roleValidator),
-    }).index("email", ["email"]),
+      username: v.optional(v.string()),
+      bio: v.optional(v.string()),
+      location: v.optional(v.string()),
+      website: v.optional(v.string()),
+      githubUrl: v.optional(v.string()),
+    }).index("email", ["email"])
+      .index("username", ["username"]),
 
     jobs: defineTable({
       userId: v.string(),
