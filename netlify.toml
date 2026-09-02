@@ -1,5 +1,5 @@
 [build]
-  command = "npx convex dev --once && tsc -b && vite build"
+  command = "npx convex codegen && tsc -b && vite build"
   publish = "dist"
 
 [build.environment]
