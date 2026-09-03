@@ -18,6 +18,8 @@ import {
   X,
   Settings,
   User,
+  Lock,
+  ArrowUpRight,
 } from "lucide-react";
 import logo from "@/assets/logo.svg";
 import { useAuth } from "@/hooks/use-auth";
@@ -326,6 +328,7 @@ export default function Dashboard() {
   );
 
   const hasAPIs = !!(apiSettings?.transcriptionApiKey && apiSettings?.llmApiKey);
+  const isGuest = !!user?.isAnonymous;
 
   const handleSignOut = async () => {
     await signOut();
@@ -503,7 +506,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* API Key Warning */}
-        {!hasAPIs && (
+        {!hasAPIs && !isGuest && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -543,6 +546,29 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {isGuest ? (
+              <div className="flex flex-col items-center text-center py-10 px-4">
+                <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                  <Lock className="size-5 text-primary" />
+                </div>
+                <h2 className="text-lg font-semibold mb-2">Guest mode</h2>
+                <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mb-6">
+                  You're exploring ClipSense as a guest. Sign in with GitHub to
+                  analyze videos, find your best moments, and export clips.
+                </p>
+                <button
+                  onClick={() => navigate("/auth?returnTo=/dashboard")}
+                  className="clip-btn-primary inline-flex items-center gap-2 text-sm"
+                >
+                  Sign in with GitHub
+                  <ArrowUpRight className="size-4" />
+                </button>
+                <p className="mt-4 text-xs text-muted-foreground/60">
+                  Guest sessions are private and nothing is saved.
+                </p>
+              </div>
+            ) : (
+              <>
             <h2 className="text-lg font-semibold mb-4">Start with a video</h2>
 
             {/* Tabs */}
@@ -667,6 +693,8 @@ export default function Dashboard() {
               Find my best moments
               <ChevronRight className="size-4" />
             </button>
+              </>
+            )}
           </motion.div>
 
           {/* How It Works Card */}

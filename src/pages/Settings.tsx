@@ -11,6 +11,8 @@ import {
   EyeOff,
   ExternalLink,
   Shield,
+  Lock,
+  ArrowUpRight,
 } from "lucide-react";
 import logo from "@/assets/logo.svg";
 import { useAuth } from "@/hooks/use-auth";
@@ -100,7 +102,8 @@ const LLM_PROVIDERS: {
 ];
 
 export default function Settings() {
-  useAuth(); // ensure auth context is mounted
+  const { user } = useAuth(); // ensure auth context is mounted
+  const isGuest = !!user?.isAnonymous;
   const navigate = useNavigate();
 
   const existingSettings = useQuery(api.apiSettings.get);
@@ -158,18 +161,20 @@ export default function Settings() {
             <span className="font-semibold text-sm tracking-tight">ClipSense</span>
           </div>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={!isConfigured || isSaving}
-          className="clip-btn-primary text-sm flex items-center gap-2 disabled:opacity-50"
-        >
-          {isSaving ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : saved ? (
-            <CheckCircle2 className="size-4" />
-          ) : null}
-          {saved ? "Saved!" : "Save Settings"}
-        </button>
+        {!isGuest && (
+          <button
+            onClick={handleSave}
+            disabled={!isConfigured || isSaving}
+            className="clip-btn-primary text-sm flex items-center gap-2 disabled:opacity-50"
+          >
+            {isSaving ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : saved ? (
+              <CheckCircle2 className="size-4" />
+            ) : null}
+            {saved ? "Saved!" : "Save Settings"}
+          </button>
+        )}
       </nav>
 
       <div className="max-w-3xl mx-auto px-6 lg:px-8 py-8 lg:py-12">
@@ -182,6 +187,28 @@ export default function Settings() {
           Back to workspace
         </button>
 
+        {isGuest ? (
+          <div className="clip-card p-10 text-center">
+            <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Lock className="size-5 text-primary" />
+            </div>
+            <h2 className="text-lg font-semibold mb-2">Sign in to connect your APIs</h2>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed mb-6">
+              Guests can browse ClipSense, but API keys, analysis, and export
+              are reserved for signed-in accounts.
+            </p>
+            <button
+              onClick={() => navigate("/auth?returnTo=/settings")}
+              className="clip-btn-primary inline-flex items-center gap-2 text-sm"
+            >
+              Sign in with GitHub
+              <ArrowUpRight className="size-4" />
+            </button>
+            <p className="mt-4 text-xs text-muted-foreground/60">
+              Your keys stay private and are never shared.
+            </p>
+          </div>
+        ) : (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -439,6 +466,7 @@ export default function Settings() {
             </p>
           </div>
         </motion.div>
+        )}
       </div>
     </div>
   );

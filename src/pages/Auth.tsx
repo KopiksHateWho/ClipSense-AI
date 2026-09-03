@@ -28,8 +28,8 @@ function resolveRedirectAfterAuth(
 }
 
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
-  const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { signIn } = useAuthActions();
+  const { isLoading: authLoading, isAuthenticated, user } = useAuth();
+  const { signIn, signOut } = useAuthActions();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = resolveRedirectAfterAuth(
@@ -38,17 +38,23 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isGuest = !!user?.isAnonymous;
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    // Guests are allowed to stay on this page to upgrade to a real account
+    if (!authLoading && isAuthenticated && !isGuest) {
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, navigate, redirect]);
+  }, [authLoading, isAuthenticated, isGuest, navigate, redirect]);
 
   const handleGitHubLogin = async () => {
     setIsLoading(true);
     setError(null);
     try {
+      // Replace the anonymous session with a real GitHub account
+      if (isGuest) {
+        await signOut();
+      }
       await signIn("github", { redirectTo: redirect });
     } catch (error) {
       console.error("GitHub sign-in error:", error);
@@ -98,6 +104,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     />
                   </div>
                 <CardTitle className="text-xl">Welcome to ClipSense</CardTitle>
+                {isGuest && (
+                  <p className="mt-3 text-xs text-muted-foreground bg-secondary/50 border border-border/40 rounded-md px-3 py-2">
+                    You're browsing as <span className="font-semibold text-foreground">{user?.name}</span>.
+                    Sign in with GitHub to unlock analysis and export.
+                  </p>
+                )}
               </CardHeader>
               <CardContent className="pb-6">
                 {error && (
@@ -120,32 +132,36 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   Sign in with GitHub
                 </Button>
 
-                <div className="my-4 flex items-center gap-3">
-                  <div className="h-px flex-1 bg-border/60" />
-                  <span className="text-xs text-muted-foreground">or</span>
-                  <div className="h-px flex-1 bg-border/60" />
-                </div>
+                {!isGuest && (
+                  <>
+                    <div className="my-4 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border/60" />
+                      <span className="text-xs text-muted-foreground">or</span>
+                      <div className="h-px flex-1 bg-border/60" />
+                    </div>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full text-muted-foreground hover:text-foreground"
-                  onClick={handleGuestLogin}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="8" r="4" />
-                      <path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" />
-                    </svg>
-                  )}
-                  Continue as Guest
-                </Button>
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  No account needed — try ClipSense instantly
-                </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full text-muted-foreground hover:text-foreground"
+                      onClick={handleGuestLogin}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="8" r="4" />
+                          <path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" />
+                        </svg>
+                      )}
+                      Continue as Guest
+                    </Button>
+                    <p className="mt-2 text-center text-xs text-muted-foreground">
+                      No account needed — try ClipSense instantly
+                    </p>
+                  </>
+                )}
               </CardContent>
 
           <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-secondary/50 border-t border-border/50 rounded-b-lg">
