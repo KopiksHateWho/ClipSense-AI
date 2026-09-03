@@ -38,14 +38,18 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingGuestRedirect, setPendingGuestRedirect] = useState(false);
   const isGuest = !!user?.isAnonymous;
 
   useEffect(() => {
-    // Guests are allowed to stay on this page to upgrade to a real account
-    if (!authLoading && isAuthenticated && !isGuest) {
+    // Signed-in users (and guests who just completed the guest sign-in) are
+    // sent to their destination. Guests who *arrive* here are allowed to stay
+    // on this page to upgrade to a real account.
+    if (authLoading) return;
+    if (isAuthenticated && (!isGuest || pendingGuestRedirect)) {
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, isGuest, navigate, redirect]);
+  }, [authLoading, isAuthenticated, isGuest, pendingGuestRedirect, navigate, redirect]);
 
   const handleGitHubLogin = async () => {
     setIsLoading(true);
@@ -71,9 +75,13 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setIsLoading(true);
     setError(null);
     try {
+      // Mark the redirect as pending BEFORE signing in. Navigation happens in
+      // the effect above once the session is confirmed, so RequireAuth doesn't
+      // see a stale signed-out state and bounce us back to /auth.
+      setPendingGuestRedirect(true);
       await signIn("anonymous");
-      navigate(redirect);
     } catch (error) {
+      setPendingGuestRedirect(false);
       console.error("Guest sign-in error:", error);
       setError(
         error instanceof Error
