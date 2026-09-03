@@ -7,6 +7,11 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
     GitHub,
     emailOtp,
-    Anonymous,
+    Anonymous({
+      profile() {
+        const suffix = crypto.randomUUID().slice(0, 4).toUpperCase();
+        return { isAnonymous: true, name: `Guest ${suffix}` };
+      },
+    }),
   ],
 });
