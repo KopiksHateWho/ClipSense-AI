@@ -198,6 +198,19 @@ This makes the generated results much easier to review and organize than a simpl
 
 ---
 
+## ✂️ Clip Preview & Export
+
+Every discovered clip can be opened in a preview modal showing its exact time range, score, label, and the AI's reasoning.
+
+From there you can:
+
+* **Export the clip** — the browser trims the source video with FFmpeg (WASM) and downloads a ready-to-publish clip file
+* Share or open the original source
+
+Export runs fully client-side: video bytes never leave your browser.
+
+---
+
 ## ⚡ Real-Time Processing State
 
 Video processing is represented as a job with explicit processing states.
@@ -230,13 +243,62 @@ ClipSense uses **Convex Auth** for authentication.
 
 The current authentication system supports:
 
-* Email OTP authentication
-* Anonymous users
+* **GitHub OAuth** — one-click sign-in with your GitHub account
+* **Guest login** — instant anonymous access for previewing (see Guest Mode below)
 * Protected application routes
 * User-specific data
 * Authenticated dashboard access
 
 Protected routes use a reusable authentication guard so authenticated application functionality is separated from public pages.
+
+### GitHub OAuth setup
+
+To enable GitHub sign-in, create an OAuth App in your GitHub account settings and configure these environment variables on your Convex deployment:
+
+```env
+AUTH_GITHUB_ID=your_client_id
+AUTH_GITHUB_SECRET=your_client_secret
+SITE_URL=https://your-frontend-url
+```
+
+The GitHub OAuth callback URL must point at your Convex site:
+
+```text
+https://<your-deployment>.convex.site/api/auth/callback/github
+```
+
+`SITE_URL` controls where users land after a successful sign-in — it must be your app's URL, not the Convex backend URL.
+
+### Editable user profiles
+
+Signed-in users can manage their public profile from the **Profile** page:
+
+* Display name
+* Username
+* Bio
+* Location
+* Website
+
+Profiles are stored per-user in Convex and used across the application.
+
+---
+
+## 🧑‍💻 Guest Mode (Review Only)
+
+Guests can try ClipSense instantly without an account via **Continue as Guest**.
+
+Guest sessions are read-only previews:
+
+* Browse the workspace and see how the workflow looks
+* View the history section and sample UI
+
+The following features require a signed-in GitHub account:
+
+* Running new video analyses (YouTube or upload)
+* Configuring transcription / LLM API keys
+* Exporting clips
+
+When a guest tries to use a locked feature, they are prompted to sign in with GitHub. Signing in cleanly replaces the anonymous session with a real account. Guest sessions are private and ephemeral — nothing created during a guest session is saved or migrated.
 
 ---
 
@@ -265,6 +327,8 @@ SambaNova
 ```
 
 The selected provider and credentials are stored as user-specific application settings and used by the processing pipeline.
+
+The Settings page includes a **Quick Setup** panel that links directly to free providers with no credit card required — **Groq** (free Whisper transcription) and **SambaNova** (free Llama 3 LLM inference) — so new users can go from zero to a working pipeline in about two minutes.
 
 This makes provider selection an application-level configuration rather than something hardcoded into the processing engine.
 
@@ -403,6 +467,11 @@ ClipSense-AI/
 │   ├── lib/
 │   │
 │   ├── pages/
+│   │   ├── Auth.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── Landing.tsx
+│   │   ├── Profile.tsx
+│   │   └── Settings.tsx
 │   │
 │   ├── types/
 │   │
@@ -595,7 +664,18 @@ ClipSense currently organizes its persistent data around several core entities.
 
 ### Users
 
-Stores authenticated user information and role metadata.
+Stores authenticated user information, GitHub/guest identity flags, and editable profile fields.
+
+```text
+name
+image
+email
+isAnonymous
+username
+bio
+location
+website
+```
 
 ### Jobs
 
@@ -738,7 +818,10 @@ ClipSense AI is an actively developed project.
 * Multi-provider LLM analysis
 * Job processing pipeline
 * Clip scoring
-* Authenticated user workflows
+* GitHub OAuth authentication
+* Guest mode (review-only previews)
+* Clip preview & export
+* Editable user profiles
 * Persistent clip history
 * Configurable AI providers
 
@@ -799,7 +882,7 @@ ClipSense AI is an actively developed project.
 * [ ] Clip editing
 * [ ] Caption generation
 * [ ] Smart reframing
-* [ ] Export pipeline
+* [x] Clip export (browser-side FFmpeg trimming)
 
 ### Phase 3 — Content Automation
 
